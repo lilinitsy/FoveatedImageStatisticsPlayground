@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from typing import Tuple, List
+from typing import Dict, List, Tuple
 
 # Image should already be loaded in OpenCV
 # This function takes in the radii in pixels
@@ -79,7 +79,7 @@ def visualize_foveated_grid_px(image: np.ndarray, center: Tuple[int, int], radii
 	ax.imshow(image_rgb)
 	ax.axis("off")
 
-	mask_central = distances <= radii[0] # do not draw over this
+	mask_central = distances <= radii[0]
 	mask_inner = (distances > radii[0]) & (distances <= radii[1])
 	mask_outer = distances > radii[1]
 
@@ -151,3 +151,41 @@ def compute_base_moments(image: np.ndarray, fixation_point: Tuple[int, int], alp
 	
 
 	return (mean_texture, variance_texture, skew_texture)
+
+
+
+def compute_gaussian_pyramids(mean_texture: np.ndarray, variance_texture: np.ndarray, skew_texture: np.ndarray, num_levels: int = 5) -> Dict[str, List[np.ndarray]]:
+	gaussian_pyramids = {
+		'mean': [mean_texture],
+		'variance': [variance_texture],
+		'skew': [skew_texture]
+	}
+
+	for i in range(1, num_levels):
+		gaussian_pyramids['mean'].append(cv2.pyrDown(gaussian_pyramids['mean'][i - 1]))
+		gaussian_pyramids['variance'].append(cv2.pyrDown(gaussian_pyramids['variance'][i - 1]))
+		gaussian_pyramids['skew'].append(cv2.pyrDown(gaussian_pyramids['skew'][i - 1]))
+
+	return gaussian_pyramids
+
+
+def compute_laplacian_pyramids(gaussian_pyramids: Dict[str, List[np.ndarray]]) -> Dict[str, List[np.ndarray]]:
+	laplacian_pyramids = {
+		'mean': [],
+		'variance': [],
+		'skew': []
+    }
+
+	
+	for moment in gaussian_pyramids.keys():
+		num_levels = len(gaussian_pyramids[moment])
+		for i in range(num_levels - 1):
+			size = (gaussian_pyramids[moment][i].shape[1], gaussian_pyramids[moment][i].shape[0])
+			expanded = cv2.pyrUp(gaussian_pyramids[moment][i+1], dstsize=size)
+			laplacian = cv2.subtract(gaussian_pyramids[moment][i], expanded)
+			laplacian_pyramids[moment].append(laplacian)
+		laplacian_pyramids[moment].append(gaussian_pyramids[moment][-1])
+
+	return laplacian_pyramids
+
+				
