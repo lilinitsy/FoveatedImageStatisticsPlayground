@@ -3,12 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from typing import Dict, List, Tuple
+from reservoir import Reservoir
 
 # Image should already be loaded in OpenCV
 # This function takes in the radii in pixels
 def guenter_foveated_rendering_px(image: np.ndarray, center: Tuple[int, int], radii: Tuple[int, int]) -> np.ndarray:
 	foveated_image = image.copy()
-	(height, width, _) = image.shape
+	(width, height, _) = image.shape
 	(x, y) = np.ogrid[:width, :height]
 
 	distance = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
@@ -29,7 +30,7 @@ def guenter_foveated_rendering_px(image: np.ndarray, center: Tuple[int, int], ra
 
 def guenter_foveated_rendering_px_mip(image: np.ndarray, center: Tuple[int, int], radii: Tuple[int, int]) -> np.ndarray:
 	foveated_image = np.zeros_like(image)
-	(height, width, _) = image.shape
+	(width, height, _) = image.shape
 	(x, y) = np.ogrid[:width, :height]
 
 	distances = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
@@ -38,7 +39,7 @@ def guenter_foveated_rendering_px_mip(image: np.ndarray, center: Tuple[int, int]
 
 	for x in range(0, width):
 		for y in range(0, height):
-			distance = distances[x, y]
+			distance = distances[y, x] # Numpy uses row-major and somehow this means has to be [y, x]?
 
 			if distance > radii[1]:
 				downsampled_x = x // 4
@@ -152,8 +153,31 @@ def compute_base_moments(image: np.ndarray, fixation_point: Tuple[int, int], alp
 
 	return (mean_texture, variance_texture, skew_texture)
 
+def visualize_base_moments(mean_texture: np.ndarray, variance_texture: np.ndarray, skew_texture: np.ndarray) -> None:
+	fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+	
+	# Mean texture visualization
+	axs[0].imshow(mean_texture, cmap = 'gray')
+	axs[0].set_title("Mean base moment")
+	axs[0].axis("off")
+
+	# Variance texture visualization
+	axs[1].imshow(variance_texture, cmap = 'gray')
+	axs[1].set_title(f"Variance base moment")
+	axs[1].axis("off")
+
+	axs[2].imshow(skew_texture, cmap = 'gray')
+	axs[2].set_title("Skew base moment")
+	axs[2].axis("off")
+	
+	plt.tight_layout()
+	plt.show()
 
 
+
+
+
+# Beyond Blur pyramids are made from here: https://github.com/kaanaksit/odak/blob/196a8aa9217fa52f843c31fd9e613b64a7bd904f/odak/learn/perception/spatial_steerable_pyramid.py#L104
 def compute_gaussian_pyramids(mean_texture: np.ndarray, variance_texture: np.ndarray, skew_texture: np.ndarray, num_levels: int = 5) -> Dict[str, List[np.ndarray]]:
 	gaussian_pyramids = {
 		'mean': [mean_texture],
@@ -188,4 +212,6 @@ def compute_laplacian_pyramids(gaussian_pyramids: Dict[str, List[np.ndarray]]) -
 
 	return laplacian_pyramids
 
-				
+
+def basic_spatial_accumulation_without_pyramids(image: np.ndarray, history_buffer: np.ndarray, alpha = 0.2) -> np.ndarray:
+		return (1 - alpha) * image.astype(np.float32) + alpha * history_buffer.astype(np.float32)
