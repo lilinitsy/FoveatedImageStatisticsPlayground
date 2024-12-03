@@ -71,7 +71,7 @@ def visualize_guenter_foveated_regions_px(image: np.ndarray, center: Tuple[int, 
 
 
 def visualize_foveated_grid_px(image: np.ndarray, center: Tuple[int, int], radii: Tuple[int, int], mask_widths: Tuple[int, int]):
-	(height, width, _) = image.shape
+	(width, height, _) = image.shape
 	image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # Matplotlib needs RGB
 	(x, y) = np.ogrid[:width, :height]
 	distances = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
@@ -121,7 +121,7 @@ def compute_base_moments(image: np.ndarray, fixation_point: Tuple[int, int], alp
 	variance_texture = np.zeros_like(image, dtype = np.float32)
 	skew_texture = np.zeros_like(image, dtype = np.float32)
 
-	(height, width, _) = image.shape
+	(width, height, _) = image.shape
 	(x, y) = np.ogrid[:width, :height]
 	distances = np.sqrt((x - fixation_point[0]) ** 2 + (y - fixation_point[1]) ** 2)
 	pooling_sizes = base_pooling_size + alpha * distances
@@ -178,7 +178,7 @@ def visualize_base_moments(mean_texture: np.ndarray, variance_texture: np.ndarra
 
 
 # Beyond Blur pyramids are made from here: https://github.com/kaanaksit/odak/blob/196a8aa9217fa52f843c31fd9e613b64a7bd904f/odak/learn/perception/spatial_steerable_pyramid.py#L104
-def compute_gaussian_pyramids(mean_texture: np.ndarray, variance_texture: np.ndarray, skew_texture: np.ndarray, num_levels: int = 5) -> Dict[str, List[np.ndarray]]:
+def compute_basemoments_gaussian_pyramids(mean_texture: np.ndarray, variance_texture: np.ndarray, skew_texture: np.ndarray, num_levels: int = 5) -> Dict[str, List[np.ndarray]]:
 	gaussian_pyramids = {
 		'mean': [mean_texture],
 		'variance': [variance_texture],
@@ -193,7 +193,7 @@ def compute_gaussian_pyramids(mean_texture: np.ndarray, variance_texture: np.nda
 	return gaussian_pyramids
 
 
-def compute_laplacian_pyramids(gaussian_pyramids: Dict[str, List[np.ndarray]]) -> Dict[str, List[np.ndarray]]:
+def compute_basemoments_laplacian_pyramids(gaussian_pyramids: Dict[str, List[np.ndarray]]) -> Dict[str, List[np.ndarray]]:
 	laplacian_pyramids = {
 		'mean': [],
 		'variance': [],
@@ -215,3 +215,9 @@ def compute_laplacian_pyramids(gaussian_pyramids: Dict[str, List[np.ndarray]]) -
 
 def basic_spatial_accumulation_without_pyramids(image: np.ndarray, history_buffer: np.ndarray, alpha = 0.2) -> np.ndarray:
 		return (1 - alpha) * image.astype(np.float32) + alpha * history_buffer.astype(np.float32)
+
+
+# LUT = LookUp Table
+def make_foveation_lookup_table(distances: np.ndarray, thresholds: List) -> np.ndarray:
+	# Map the distance from center to pyramid levels
+	return np.digitize(distances, thresholds, right = True) # Right = true, bins increasing, bins[i - 1] < x <= bins[i]
