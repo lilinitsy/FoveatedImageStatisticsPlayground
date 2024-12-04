@@ -221,3 +221,13 @@ def basic_spatial_accumulation_without_pyramids(image: np.ndarray, history_buffe
 def make_foveation_lookup_table(distances: np.ndarray, thresholds: List) -> np.ndarray:
 	# Map the distance from center to pyramid levels
 	return np.digitize(distances, thresholds, right = True) # Right = true, bins increasing, bins[i - 1] < x <= bins[i]
+
+
+def basic_render_from_pyramid_levels(pyramid_levels: np.ndarray, pyramid: Dict[str, List[np.ndarray]], width: int, height: int) -> np.ndarray:
+	reconstructed_image = np.zeros_like(pyramid['mean'][0], dtype = np.float32)
+	for level in range(0, len(pyramid['mean'])):
+		mask = (pyramid_levels == level)
+		resized_pyramid = cv2.resize(pyramid['mean'][level], (width, height), interpolation = cv2.INTER_LINEAR)
+		reconstructed_image += resized_pyramid * mask
+
+	return reconstructed_image
