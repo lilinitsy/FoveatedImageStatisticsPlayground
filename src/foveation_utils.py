@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from typing import Dict, List, Tuple
+
 from reservoir import Reservoir
 
 # Image should already be loaded in OpenCV
