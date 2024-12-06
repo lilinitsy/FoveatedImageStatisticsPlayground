@@ -5,15 +5,23 @@ import random
 
 # samples will be vec3 or vec4's?
 class Reservoir:
-	def __init__(self):
-		self.output_sample = 0 # y in Algorithm 2
+	def __init__(self, size = 1):
 		self.weighted_sum = 0 # wsum
-		self.num_samples_seen = 0 # M
+		self.size = 1 # K
+		self.reservoir = []
 
-	def update(self, x_sample, w_sample):
-		self.weighted_sum = self.weighted_sum + w_sample
-		self.num_samples_seen = self.num_samples_seen + 1
+		for k in range(0, self.size):
+			self.reservoir.append(0)
 
-		randnum = random.random()
-		if randnum < (w_sample / self.weighted_sum):
-			self.output_sample = x_sample
+	# The below function definition could be necessary.
+	# Simpler if it's not and can just upload some luminance value or something?
+	#def update(self, sample: Tuple[Union[float, np.ndarray], float]):
+
+
+	def update(self, sample_x, sample_weight):
+		self.weighted_sum = self.weighted_sum + sample_weight
+
+		for k in range(0, len(self.reservoir)):
+			randnum = random.random()
+			if randnum < (sample_weight / self.weighted_sum):
+				self.reservoir[k] = sample_x # output sample for this k
