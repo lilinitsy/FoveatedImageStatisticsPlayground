@@ -228,7 +228,45 @@ def basic_render_from_pyramid_levels(pyramid_levels: np.ndarray, pyramid: Dict[s
 	reconstructed_image = np.zeros_like(pyramid['mean'][0], dtype = np.float32)
 	for level in range(0, len(pyramid['mean'])):
 		mask = (pyramid_levels == level)
+		# Have to resize to make the dimensions match
 		resized_pyramid = cv2.resize(pyramid['mean'][level], (width, height), interpolation = cv2.INTER_LINEAR)
 		reconstructed_image += resized_pyramid * mask
 
 	return reconstructed_image
+
+
+
+def accuumulate_pyramids_with_reservoirs(pyramid_levels: np.ndarray, pyramid: Dict[str, List[np.ndarray]], centers: List[Tuple[int, int]], thresholds: List[int], width: int, height: int, k=4) -> np.ndarray:
+	num_levels = len(thresholds + 1)
+
+	reservoirs = [
+		[[Reservoir(size=k) for _ in range(width)] for _ in range(height)]
+		for _ in range(num_levels)
+	]
+
+
+	(x, y) = np.meshgrid(np.arange(width), np.arange(height), indexing = 'ij')
+	for fixation_point in centers:
+		distances = np.sqrt((x - fixation_point[0]) ** 2 + (y - fixation_point[1]) ** 2)
+		foveation_lut = make_foveation_lookup_table(distances, thresholds)
+
+		for level in range(0, num_levels):
+			mask = (pyramid_levels == level)
+
+			# Have to resize to make the dimensions match
+			resized_pyramid = cv2.resize(pyramid['mean'][level], (width, height), interpolation = cv2.INTER_LINEAR) 
+
+			for i in range(0, width):
+				for j in range(0, height):
+					sample = resized_pyramid[i, j]
+					weight = 1 / (distances[i, j]) # use the distance as the weight
+					reservoirs[level][i][j].update(sample, weight)
+		
+		reconstructed_images = []
+		# Pyramid reconstruction
+		for level in range(0, num_levels):
+			accumulated_pyramid = np.zeros_like(pyramid['mean'][level], dtype = np.float32)
+			for i in range(0, width):
+				for j in range(0, height):
+					accumulated_pyramid[i, j] = np.mean(reservoirs[level][i][j].reservoir)
+					reconstructed_images.append(accumulated_pyramid)
