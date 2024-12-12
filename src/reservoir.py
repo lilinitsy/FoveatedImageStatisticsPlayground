@@ -1,7 +1,9 @@
 # Based off Spatiotemporal reservoir resampling for real-time ray tracing with dynamic direct lighting
 # (https://dl.acm.org/doi/pdf/10.1145/3386569.3392481)
 # https://cwyman.org/papers/rtg2-weightedReservoir.pdf is more clear
-
+# https://github.com/Alegruz/Screen-Space-ReSTIR-GI/blob/main/Rendering/ReSTIRGI/GIReservoir.slang is the reservoir
+#	from a later paper. https://github.com/Alegruz/Screen-Space-ReSTIR-GI/blob/main/Rendering/ReSTIRGI/GIResampling.cs.slang uses it
+# 
 import random
 from typing import Dict, List, Tuple
 
@@ -32,7 +34,9 @@ class Reservoir:
 
 		for k in range(0, self.size):
 			randnum = random.random()
-			if randnum < (sample_weight / self.weighted_sum):
+			if self.reservoir[k] == 0:
+				self.reservoir[k] = sample_x
+			elif randnum < (sample_weight / self.weighted_sum):
 				self.reservoir[k] = sample_x # output sample for this k
 
 	# What's a good selection strategy for k > 1?
@@ -43,13 +47,14 @@ class Reservoir:
 # p_hat(q) is the target distribution for pixel q, but
 # what should it be here? Strictly speaking, pixel_probability should be pixel_probability(r.y).
 # TODO: pixel is unused here; remove later
-def combine_reservoirs(pixel, pixel_probability, reservoirs: List[Reservoir]) -> Reservoir:
+def combine_reservoirs(pixel, pixel_probability, reservoir1: Reservoir, reservoir2: Reservoir) -> Reservoir:
 	r = Reservoir()
-	num_elements_seen = 0
-	for reservoir in reservoirs:
-		sample = reservoir.select_element()
-		r.update(sample, pixel_probability * reservoir.weighted_sum * reservoir.num_elements_seen) # TODO: Revisit the PDF
-		num_elements_seen = num_elements_seen + reservoir.num_elements_seen
-	r.num_elements_seen = num_elements_seen # Update this because the standard update function doesn't do it properly
+
+	# Need to revisit the PDF for this?
+	# C way: r.y = random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum ? reservoir1.select_element() : reservoir2.select_element()
+	sample = reservoir1.weighted_sum if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else reservoir2.weighted_sum
+	r.update(sample, reservoir1.weighted_sum + reservoir2.weighted_sum)
+	# Overwrite the number of elements seen, update function doesn't do this properly when combining
+	r.num_elements_seen = reservoir1.num_elements_seen + reservoir2.num_elements_seen
 	# What's s.W in Alg4?
 
