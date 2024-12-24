@@ -47,14 +47,16 @@ class Reservoir:
 # p_hat(q) is the target distribution for pixel q, but
 # what should it be here? Strictly speaking, pixel_probability should be pixel_probability(r.y).
 # TODO: pixel is unused here; remove later
-def combine_reservoirs(pixel, pixel_probability, reservoir1: Reservoir, reservoir2: Reservoir) -> Reservoir:
+def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Reservoir, reservoir2: Reservoir) -> Reservoir:
 	r = Reservoir()
 
 	# Need to revisit the PDF for this?
 	# C way: r.y = random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum ? reservoir1.select_element() : reservoir2.select_element()
-	sample = reservoir1.weighted_sum if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else reservoir2.weighted_sum
+	sample = reservoir1.reservoir[0] if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else reservoir2.reservoir[0]
 	r.update(sample, reservoir1.weighted_sum + reservoir2.weighted_sum)
 	# Overwrite the number of elements seen, update function doesn't do this properly when combining
 	r.num_elements_seen = reservoir1.num_elements_seen + reservoir2.num_elements_seen
 	# What's s.W in Alg4?
+
+	return r
 
