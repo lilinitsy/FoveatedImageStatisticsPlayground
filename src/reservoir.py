@@ -60,3 +60,14 @@ def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Re
 
 	return r
 
+
+def reservoir_spatial_reuse(input_reservoirs, neighbour_width, width, height):
+	reservoirs_spatial_reuse = [[input_reservoirs[x][y] for y in range(width)] for x in range(height)]
+
+	for x in range(neighbour_width, width - neighbour_width):
+		for y in range(neighbour_width, height - neighbour_width):
+			neighbour_offset = (random.randint(-neighbour_width, neighbour_width), random.randint(-neighbour_width, neighbour_width))
+			neighbour_reservoir = input_reservoirs[x + neighbour_offset[0]][y + neighbour_offset[1]]
+			reservoirs_spatial_reuse[x][y] = combine_reservoirs((x, y), 0.5, input_reservoirs[x][y], neighbour_reservoir)
+
+	return reservoirs_spatial_reuse
