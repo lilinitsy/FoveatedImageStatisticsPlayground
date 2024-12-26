@@ -4,6 +4,10 @@
 # https://github.com/Alegruz/Screen-Space-ReSTIR-GI/blob/main/Rendering/ReSTIRGI/GIReservoir.slang is the reservoir
 #	from a later paper. https://github.com/Alegruz/Screen-Space-ReSTIR-GI/blob/main/Rendering/ReSTIRGI/GIResampling.cs.slang uses it
 # 
+
+# Another key insight from ReSTIR is a raycast direction for the AO visibility, not the lighting result.
+
+
 import random
 from typing import Dict, List, Tuple
 
@@ -21,7 +25,7 @@ class Reservoir:
 		self.reservoir = []
 
 		for k in range(0, self.size):
-			self.reservoir.append(0)
+			self.reservoir.append(None)
 
 	# The below function definition could be necessary.
 	# Simpler if it's not and can just upload some luminance value or something?
@@ -34,7 +38,7 @@ class Reservoir:
 
 		for k in range(0, self.size):
 			randnum = random.random()
-			if self.reservoir[k] == 0:
+			if self.reservoir[k] is None:
 				self.reservoir[k] = sample_x
 			elif randnum < (sample_weight / self.weighted_sum):
 				self.reservoir[k] = sample_x # output sample for this k
@@ -53,8 +57,8 @@ def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Re
 	# Need to revisit the PDF for this?
 	# C way: r.y = random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum ? reservoir1.select_element() : reservoir2.select_element()
 	sample = reservoir1.reservoir[0] if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else reservoir2.reservoir[0]
-	r.update(sample, reservoir1.weighted_sum + reservoir2.weighted_sum)
-	# Overwrite the number of elements seen, update function doesn't do this properly when combining
+	r.reservoir[0] = sample
+	r.weighted_sum = reservoir1.weighted_sum + reservoir2.weighted_sum
 	r.num_elements_seen = reservoir1.num_elements_seen + reservoir2.num_elements_seen
 	# What's s.W in Alg4?
 
