@@ -219,9 +219,17 @@ def basic_spatial_accumulation_without_pyramids(image: np.ndarray, history_buffe
 
 
 # LUT = LookUp Table
+# This function returns bins of integer levels (ie, 1-5) based on the threshold input
 def make_foveation_lookup_table(distances: np.ndarray, thresholds: List) -> np.ndarray:
 	# Map the distance from center to pyramid levels
 	return np.digitize(distances, thresholds, right = True) # Right = true, bins increasing, bins[i - 1] < x <= bins[i]
+
+
+# This version of the function returns bins of float levels on a scale of 0-1. Useful for setting the foveation rate as
+# the output of this, or 1 - output.
+def make_foveation_lookup_table_float(distances: np.ndarray, thresholds: List) -> np.ndarray:
+	bins = np.digitize(distances, thresholds, right =  True)
+	return bins / len(thresholds)
 
 
 def basic_render_from_pyramid_levels(pyramid_levels: np.ndarray, pyramid: Dict[str, List[np.ndarray]], width: int, height: int) -> np.ndarray:
