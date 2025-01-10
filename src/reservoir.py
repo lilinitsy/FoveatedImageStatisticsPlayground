@@ -3,7 +3,8 @@
 # https://cwyman.org/papers/rtg2-weightedReservoir.pdf is more clear
 # https://github.com/Alegruz/Screen-Space-ReSTIR-GI/blob/main/Rendering/ReSTIRGI/GIReservoir.slang is the reservoir
 #	from a later paper. https://github.com/Alegruz/Screen-Space-ReSTIR-GI/blob/main/Rendering/ReSTIRGI/GIResampling.cs.slang uses it
-# 
+# Reweighting happens here: https://github.com/Alegruz/Screen-Space-ReSTIR-GI/blob/6cf4456cca2f9a885ccc8d593a1f5700d14e426d/Rendering/ReSTIRGI/GIResampling.cs.slang#L457
+
 
 # Another key insight from ReSTIR is a raycast direction for the AO visibility, not the lighting result.
 
