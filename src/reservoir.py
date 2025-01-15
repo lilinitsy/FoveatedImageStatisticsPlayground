@@ -19,30 +19,28 @@ from typing import Dict, List, Tuple
 # The Reservoir should be used to store statistics so that they can be reused
 
 class Reservoir:
-	def __init__(self, size = 1):
+	def __init__(self):
+		# Store the sample's weight too?
 		self.weighted_sum = 0 # wsum
-		self.size = size # K
+		self.size = 1 # K, seems like it's basically always 1 in every use case
 		self.num_elements_seen = 0
-		self.reservoir = []
+		self.sample = None
+		self.sample_weight = 0
+		self.confidence = 0
 
-		for k in range(0, self.size):
-			self.reservoir.append(None)
-
-	# The below function definition could be necessary.
-	# Simpler if it's not and can just upload some luminance value or something?
-	#def update(self, sample: Tuple[Union[float, np.ndarray], float]):
-	
-
-	def update(self, sample_x, sample_weight):
+	def update(self, sample_x, sample_weight, confidence = 0.5):
 		self.num_elements_seen = self.num_elements_seen + 1
 		self.weighted_sum = self.weighted_sum + sample_weight
+		self.confidence = self.confidence + confidence
 
 		for k in range(0, self.size):
 			randnum = random.random()
-			if self.reservoir[k] is None:
-				self.reservoir[k] = sample_x
+			if self.sample is None:
+				self.sample = sample_x
+				self.sample_weight = sample_weight
 			elif randnum < (sample_weight / self.weighted_sum):
-				self.reservoir[k] = sample_x # output sample for this k
+				self.sample = sample_x # output sample for this k
+				self.sample_weight = sample_weight
 
 	# What's a good selection strategy for k > 1?
 	def select_element(self):
@@ -57,8 +55,9 @@ def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Re
 
 	# Need to revisit the PDF for this?
 	# C way: r.y = random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum ? reservoir1.select_element() : reservoir2.select_element()
-	sample = reservoir1.reservoir[0] if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else reservoir2.reservoir[0]
-	r.reservoir[0] = sample
+	(sample, sample_weight) = (reservoir1.sample, reservoir1.sample_weight) if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else (reservoir2.sample, reservoir2.sample_weight)
+	r.sample = sample
+	r.sample_weight = sample_weight # reservoir1.weighted_sum + reservoir2.weighted_sum # 
 	r.weighted_sum = reservoir1.weighted_sum + reservoir2.weighted_sum
 	r.num_elements_seen = reservoir1.num_elements_seen + reservoir2.num_elements_seen
 	# What's s.W in Alg4?
