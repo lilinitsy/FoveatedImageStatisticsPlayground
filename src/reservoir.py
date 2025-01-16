@@ -27,11 +27,12 @@ class Reservoir:
 		self.sample = None
 		self.sample_weight = 0
 		self.confidence = 0
+		self.confidence_cap = 15.0
 
 	def update(self, sample_x, sample_weight, confidence = 0.5):
 		self.num_elements_seen = self.num_elements_seen + 1
 		self.weighted_sum = self.weighted_sum + sample_weight
-		self.confidence = self.confidence + confidence
+		self.confidence = min(self.confidence + confidence, self.confidence_cap)
 
 		for k in range(0, self.size):
 			randnum = random.random()
@@ -76,3 +77,31 @@ def reservoir_spatial_reuse(input_reservoirs, neighbour_width, width, height):
 			reservoirs_spatial_reuse[x][y] = combine_reservoirs((x, y), 0.5, input_reservoirs[x][y], neighbour_reservoir)
 
 	return reservoirs_spatial_reuse
+
+
+
+
+
+
+
+
+
+def resample(input_reservoir: Reservoir, target_sample_confidence_ci) -> Reservoir:
+	'''
+	for each M
+		generate X (we don't have)
+		wi = mi * phat * Wx
+		Wx = (1 / phat) * wi
+		mi = ci * phat / cj * phat
+		so we're left with...
+
+		wi = (ci / cj) * wi? 
+	'''
+	r = Reservoir()
+	wi = target_sample_confidence_ci / input_reservoir.confidence * input_reservoir.sample_weight
+	r.update(input_reservoir.sample, wi, target_sample_confidence_ci)
+
+	return r
+	
+
+
