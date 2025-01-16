@@ -42,10 +42,12 @@ class Reservoir:
 				self.sample = sample_x # output sample for this k
 				self.sample_weight = sample_weight
 
-	# What's a good selection strategy for k > 1?
-	def select_element(self):
-		return self.reservoir[-1] # return last added element for now...
-
+	def to_string(self):
+		print("\tsample: ", self.sample)
+		print("\tsample_weight: ", self.sample_weight)
+		print("\tconfidence: ", self.confidence)
+		print("\tweighted sum: ", self.weighted_sum)
+		print("\tnum elements seen: ", self.num_elements_seen)
 
 # p_hat(q) is the target distribution for pixel q, but
 # what should it be here? Strictly speaking, pixel_probability should be pixel_probability(r.y).
@@ -55,9 +57,8 @@ def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Re
 
 	# Need to revisit the PDF for this?
 	# C way: r.y = random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum ? reservoir1.select_element() : reservoir2.select_element()
-	(sample, sample_weight) = (reservoir1.sample, reservoir1.sample_weight) if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else (reservoir2.sample, reservoir2.sample_weight)
-	r.sample = sample
-	r.sample_weight = sample_weight # reservoir1.weighted_sum + reservoir2.weighted_sum # 
+	r = reservoir1 if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else reservoir2
+	r.confidence = reservoir1.confidence + reservoir2.confidence # Increasing the confidence of this?
 	r.weighted_sum = reservoir1.weighted_sum + reservoir2.weighted_sum
 	r.num_elements_seen = reservoir1.num_elements_seen + reservoir2.num_elements_seen
 	# What's s.W in Alg4?
