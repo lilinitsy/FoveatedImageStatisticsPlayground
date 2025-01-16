@@ -43,6 +43,15 @@ class Reservoir:
 				self.sample = sample_x # output sample for this k
 				self.sample_weight = sample_weight
 
+	def update_alt(self, sample_x, sample_weight):
+		self.num_elements_seen = self.num_elements_seen + 1
+
+		randnum = random.random()
+
+		if randnum > self.sample_weight / (self.sample_weight + sample_weight):
+			self.sample = sample_x
+			self.sample_weight = sample_weight
+
 	def to_string(self):
 		print("\tsample: ", self.sample)
 		print("\tsample_weight: ", self.sample_weight)
