@@ -12,6 +12,8 @@
 import random
 from typing import Dict, List, Tuple
 
+import numpy as np
+
 # samples will be vec3 or vec4's?
 # Option A: store the best samples, without stochasticness? or store the stream of past 8? how does accumulation come into here?
 # Option B: store 1 frame at 8 bits per colour channel ,diffs at x bits per colour channel but same resolution/
@@ -76,6 +78,55 @@ def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Re
 	return r
 
 
+
+
+def reservoir_temporal_reuse(input_image: np.ndarray, foveation_LUT: np.ndarray, distances: np.ndarray, radii: List, adaptive_reservoirs: Reservoir, phat: np.ndarray, width: int, height: int) -> Tuple[Reservoir, Reservoir]:
+	current_frame_reservoirs = [[Reservoir() for _ in range(width)] for _ in range(height)]
+
+	# Update the current frame reservoir
+	for x in range(0, width):
+		for y in range(0, height):
+			sample = input_image[x][y]
+			#sample_probability = 1 - foveation_LUT[x][y]
+			#sample_probability = 1 / foveation_LUT[x][y]# - .1
+
+			# Gaussian sample probability -- this looked much worse
+			#sample_probability = np.exp(-distances[x][y] ** 2 / (2 * sigma ** 2))
+
+			# Piecewise MIXED with gaussian? Now this seems dumb
+			sample_probability = phat[y][x]
+
+
+			current_frame_reservoirs[x][y].update(sample, sample_weight = sample_probability, confidence = np.clip(foveation_LUT[y][x], 0.01, 1.0)) # initialize reservoir weight to .5
+			
+
+			# Skip combining reservoirs for foveal pixels -- essentially, force a reset of the reservoir irrespective of history
+			# TODO: We still need to think about a history cap being forced, or a confidence cap or both.
+			if distances[y][x] <= radii[0]:
+				adaptive_reservoirs[x][y] = current_frame_reservoirs[x][y]
+
+			else:
+				adaptive_reservoirs[x][y] = resample(adaptive_reservoirs[x][y], current_frame_reservoirs[x][y].confidence)
+				adaptive_reservoirs[x][y] = combine_reservoirs((x, y), sample_probability, current_frame_reservoirs[x][y], adaptive_reservoirs[x][y])
+
+			if(x == 300 and y == 200):
+				#print("current frame reservoir: ", current_frame_reservoirs[x][y].sample)
+				#print("adaptive_reservoir: ", adaptive_reservoirs[x][y].sample)
+				#print("sample probability: ", sample_probability)
+				print("Current frame reservoir:")
+				current_frame_reservoirs[x][y].to_string()
+
+				print("adaptive reservoir: ")
+				adaptive_reservoirs[x][y].to_string()
+
+	return (adaptive_reservoirs, current_frame_reservoirs)
+
+
+
+
+
+
+### TODO: Refactor this. Ignore this version, it's bad
 def reservoir_spatial_reuse(input_reservoirs, neighbour_width, width, height):
 	reservoirs_spatial_reuse = [[input_reservoirs[x][y] for y in range(width)] for x in range(height)]
 
