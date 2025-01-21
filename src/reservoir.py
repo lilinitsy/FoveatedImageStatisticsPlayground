@@ -80,7 +80,7 @@ def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Re
 
 
 
-def reservoir_temporal_reuse(input_image: np.ndarray, foveation_LUT: np.ndarray, distances: np.ndarray, radii: List, adaptive_reservoirs: Reservoir, phat: np.ndarray, width: int, height: int) -> Tuple[Reservoir, Reservoir]:
+def reservoir_temporal_reuse(input_image: np.ndarray, foveation_LUT: np.ndarray, distances: np.ndarray, radii: List, adaptive_reservoirs: Reservoir, phat_current: np.ndarray, phat_prev: np.ndarray, width: int, height: int) -> Tuple[Reservoir, Reservoir]:
 	current_frame_reservoirs = [[Reservoir() for _ in range(width)] for _ in range(height)]
 
 	# Update the current frame reservoir
@@ -94,7 +94,7 @@ def reservoir_temporal_reuse(input_image: np.ndarray, foveation_LUT: np.ndarray,
 			#sample_probability = np.exp(-distances[x][y] ** 2 / (2 * sigma ** 2))
 
 			# Piecewise MIXED with gaussian? Now this seems dumb
-			sample_probability = phat[y][x]
+			sample_probability = phat_current[y][x]
 
 
 			current_frame_reservoirs[x][y].update(sample, sample_weight = sample_probability, confidence = np.clip(foveation_LUT[y][x], 0.01, 1.0)) # initialize reservoir weight to .5
@@ -106,7 +106,7 @@ def reservoir_temporal_reuse(input_image: np.ndarray, foveation_LUT: np.ndarray,
 				adaptive_reservoirs[x][y] = current_frame_reservoirs[x][y]
 
 			else:
-				adaptive_reservoirs[x][y] = resample(adaptive_reservoirs[x][y], current_frame_reservoirs[x][y].confidence)
+				adaptive_reservoirs[x][y] = resample(adaptive_reservoirs[x][y], current_frame_reservoirs[x][y].confidence, phat_current[x][y], phat_prev[x][y])
 				adaptive_reservoirs[x][y] = combine_reservoirs((x, y), sample_probability, current_frame_reservoirs[x][y], adaptive_reservoirs[x][y])
 
 			if(x == 300 and y == 200):
@@ -146,7 +146,7 @@ def reservoir_spatial_reuse(input_reservoirs, neighbour_width, width, height):
 
 
 
-def resample(input_reservoir: Reservoir, target_sample_confidence_ci) -> Reservoir:
+def resample(input_reservoir: Reservoir, target_sample_confidence_ci, phat_current, phat_prev) -> Reservoir:
 	'''
 	for each M
 		generate X (we don't have)
@@ -158,8 +158,10 @@ def resample(input_reservoir: Reservoir, target_sample_confidence_ci) -> Reservo
 		wi = (ci / cj) * wi? 
 	'''
 	r = Reservoir()
-	wi = target_sample_confidence_ci / input_reservoir.confidence * input_reservoir.sample_weight
+	wi = (target_sample_confidence_ci * phat_current) / (input_reservoir.confidence * phat_prev) * input_reservoir.sample_weight
+	#wi = target_sample_confidence_ci / input_reservoir.confidence * input_reservoir.sample_weight
 	r.update(input_reservoir.sample, wi, target_sample_confidence_ci)
+	r.sample_weight = 1 / phat_current * r.weighted_sum
 
 	return r
 	
