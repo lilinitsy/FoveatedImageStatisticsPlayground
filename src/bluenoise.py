@@ -83,7 +83,6 @@ def filter_void_and_cluster_blue_noise_textures(blue_noise_texture: np.ndarray, 
 	for i in range(0, width, cell_size):
 		for j in range(0, height, cell_size):
 			subregion = blue_noise_texture[j : j + cell_size, i : i + cell_size]
-			print("Subregion: ", subregion)
 			max_index = np.unravel_index(np.argmax(subregion), subregion.shape)
 			global_idx = (j + max_index[0], i + max_index[1])
 			output_texture[global_idx[0], global_idx[1]] = 255
