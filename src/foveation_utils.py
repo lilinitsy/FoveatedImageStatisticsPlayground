@@ -54,6 +54,46 @@ def guenter_foveated_rendering_px_mip(image: np.ndarray, center: Tuple[int, int]
 				foveated_image[x, y] = image[x, y]
 
 	return foveated_image
+
+
+def foveated_rendering_blue_noise_sampling(image: np.ndarray, blue_noise_texture_2x2: np.ndarray, blue_noise_texture_4x4: np.ndarray, center: Tuple[int, int], radii: Tuple[int, int]) -> np.ndarray:
+	foveated_image = np.zeros_like(image)
+	(height, width, _) = image.shape
+	(y, x) = np.ogrid[:height, :width]
+	distances = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
+	
+	# Assume blue noise textures are the same size as the input image
+	blue_noise_texture_2x2_tiled = np.tile(blue_noise_texture_2x2, (height // 64, width // 64))
+	blue_noise_texture_4x4_tiled = np.tile(blue_noise_texture_4x4, (height // 64, width // 64))
+
+	for y in range(0, height):
+		for x in range(0, width):
+			distance = distances[y, x]
+
+			if distance <= radii[0]:
+				foveated_image[y, x] = image[y, x]
+
+			elif distance <= radii[1]:
+				block_x, block_y = (x // 2) * 2, (y // 2) * 2
+				subregion = blue_noise_texture_2x2_tiled[block_y : block_y + 2, block_x : block_x + 2]
+				sample_idx = np.argwhere(subregion == 255)[0]
+				(sample_x, sample_y) = (sample_idx[0], sample_idx[1])
+				foveated_image[block_y : block_y + 2, block_x : block_x + 2] = image[block_y + sample_y, block_x + sample_x]
+
+			else:
+				# 4x4 block rendering (we assume exactly one sample per 4x4 block)
+				block_x, block_y = (x // 4) * 4, (y // 4) * 4
+				subregion = blue_noise_texture_4x4_tiled[block_y : block_y + 4, block_x : block_x + 4]
+				sample_idx = np.argwhere(subregion == 255)[0]  # Guaranteed exactly one sample
+				(sample_x, sample_y) = (sample_idx[0], sample_idx[1])
+				foveated_image[block_y : block_y + 4, block_x : block_x + 4] = image[block_y + sample_y, block_x + sample_x]
+
+	return foveated_image
+
+
+
+
+
 	 
 def visualize_guenter_foveated_regions_px(image: np.ndarray, center: Tuple[int, int], radii: Tuple[int, int]):
 	(height, width, _) = image.shape
