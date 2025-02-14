@@ -161,7 +161,7 @@ def resample(input_reservoir: Reservoir, target_sample_confidence_ci, phat_curre
 	wi = (target_sample_confidence_ci * phat_current) / (input_reservoir.confidence * phat_prev) * input_reservoir.sample_weight
 	#wi = target_sample_confidence_ci / input_reservoir.confidence * input_reservoir.sample_weight
 	r.update(input_reservoir.sample, wi, target_sample_confidence_ci)
-	r.sample_weight = 1 / phat_current * r.weighted_sum
+	#r.sample_weight = 1 / phat_current * r.weighted_sum
 
 	return r
 	
