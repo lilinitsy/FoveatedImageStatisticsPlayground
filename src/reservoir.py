@@ -188,7 +188,7 @@ def resample(input_reservoir: Reservoir, target_sample_confidence_ci, phat_curre
 	r.update(input_reservoir.sample, wi, target_sample_confidence_ci)
 
 	# The line below seems unnecessary. The wi and r.update already seems like it updates?
-	r.sample_weight = 1 / phat_current * r.weighted_sum
+	#r.sample_weight = 1 / phat_current * r.weighted_sum
 
 	return r
 	
