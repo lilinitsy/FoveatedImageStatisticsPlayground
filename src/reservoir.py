@@ -10,6 +10,7 @@
 
 
 import random
+import copy
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -71,8 +72,24 @@ def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Re
 	# C way: r.y = random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum ? reservoir1.select_element() : reservoir2.select_element()
 	r = reservoir1 if random.random() * (reservoir1.weighted_sum + reservoir2.weighted_sum) <= reservoir1.weighted_sum else reservoir2
 	r.confidence = reservoir1.confidence + reservoir2.confidence # Increasing the confidence of this?
+
+	if(pixel[0] == 300 and pixel[1] == 200):
+		print("r1 confidence: ", reservoir1.confidence)
+		print("r2 confidence: ", reservoir2.confidence)
+
+	# This weighted sum line might be wrong?
 	r.weighted_sum = reservoir1.weighted_sum + reservoir2.weighted_sum
+	
+	'''
+	IMPORTANT
+	TODO SATURDAY 2/15
+	REORG THIS AS s.W from Algorithm 4 in SpatioTemporal Reservoir Sampling
+
+	The first term is strictly speaking (1 / phat(r.sample)) but eh...
+	'''
 	r.num_elements_seen = reservoir1.num_elements_seen + reservoir2.num_elements_seen
+	#r.weighted_sum = (1.0 / reservoir1.sample_weight) * (1 / r.num_elements_seen * r.weighted_sum)
+
 	# What's s.W in Alg4?
 
 	return r
@@ -109,15 +126,22 @@ def reservoir_temporal_reuse(input_image: np.ndarray, foveation_LUT: np.ndarray,
 				adaptive_reservoirs[x][y] = resample(adaptive_reservoirs[x][y], current_frame_reservoirs[x][y].confidence, phat_current[x][y], phat_prev[x][y])
 				adaptive_reservoirs[x][y] = combine_reservoirs((x, y), sample_probability, current_frame_reservoirs[x][y], adaptive_reservoirs[x][y])
 
-			if(x == 300 and y == 200):
-				#print("current frame reservoir: ", current_frame_reservoirs[x][y].sample)
-				#print("adaptive_reservoir: ", adaptive_reservoirs[x][y].sample)
-				#print("sample probability: ", sample_probability)
+			if x == 300 and y == 200:
+				print(x, y)
 				print("Current frame reservoir:")
 				current_frame_reservoirs[x][y].to_string()
 
 				print("adaptive reservoir: ")
 				adaptive_reservoirs[x][y].to_string()
+
+			if x == 440 and y == 315:
+				print(x, y)
+				print("Current frame reservoir:")
+				current_frame_reservoirs[x][y].to_string()
+
+				print("adaptive reservoir: ")
+				adaptive_reservoirs[x][y].to_string()
+
 
 	return (adaptive_reservoirs, current_frame_reservoirs)
 
@@ -145,7 +169,7 @@ def reservoir_spatial_reuse(input_reservoirs, neighbour_width, width, height):
 
 
 
-
+# This is overwriting adaptive reservoir's confidence because it's not using input reservoir.update
 def resample(input_reservoir: Reservoir, target_sample_confidence_ci, phat_current, phat_prev) -> Reservoir:
 	'''
 	for each M
@@ -157,13 +181,14 @@ def resample(input_reservoir: Reservoir, target_sample_confidence_ci, phat_curre
 
 		wi = (ci / cj) * wi? 
 	'''
-	r = Reservoir()
+	#r = Reservoir()
+	r = copy.deepcopy(input_reservoir)
 	wi = (target_sample_confidence_ci * phat_current) / (input_reservoir.confidence * phat_prev) * input_reservoir.sample_weight
 	#wi = target_sample_confidence_ci / input_reservoir.confidence * input_reservoir.sample_weight
 	r.update(input_reservoir.sample, wi, target_sample_confidence_ci)
 
 	# The line below seems unnecessary. The wi and r.update already seems like it updates?
-	#r.sample_weight = 1 / phat_current * r.weighted_sum
+	r.sample_weight = 1 / phat_current * r.weighted_sum
 
 	return r
 	
