@@ -26,11 +26,13 @@ class Reservoir:
 		# Store the sample's weight too?
 		self.weighted_sum = 0 # wsum
 		self.size = 1 # K, seems like it's basically always 1 in every use case
-		self.num_elements_seen = 0
+		self.num_elements_seen = 0 # Reset this when confidence is reset
 		self.sample = None
 		self.sample_weight = 0
 		self.confidence = 0
-		self.confidence_cap = 15.0
+		self.confidence_cap = 15.0 # This should probably depend on what region it's in
+		# Confidence should probably be reset when the reservoir's confidence was at the cap
+		# And a different pixel is taken?
 
 	def update(self, sample_x, sample_weight, confidence = 0.5):
 		self.num_elements_seen = self.num_elements_seen + 1
@@ -77,20 +79,13 @@ def combine_reservoirs(pixel: Tuple[int, int], pixel_probability, reservoir1: Re
 		print("r1 confidence: ", reservoir1.confidence)
 		print("r2 confidence: ", reservoir2.confidence)
 
-	# This weighted sum line might be wrong?
+
 	r.weighted_sum = reservoir1.weighted_sum + reservoir2.weighted_sum
-	
-	'''
-	IMPORTANT
-	TODO SATURDAY 2/15
-	REORG THIS AS s.W from Algorithm 4 in SpatioTemporal Reservoir Sampling
-
-	The first term is strictly speaking (1 / phat(r.sample)) but eh...
-	'''
 	r.num_elements_seen = reservoir1.num_elements_seen + reservoir2.num_elements_seen
-	#r.weighted_sum = (1.0 / reservoir1.sample_weight) * (1 / r.num_elements_seen * r.weighted_sum)
 
-	# What's s.W in Alg4?
+	# This one produced fucky results, probably because it should be reassigning the same weight...
+	# But the sample weight reassignment can just be updated by the resampling step?
+	#r.weighted_sum = (1.0 / reservoir1.sample_weight) * (1 / r.num_elements_seen * r.weighted_sum)
 
 	return r
 
@@ -104,15 +99,7 @@ def reservoir_temporal_reuse(input_image: np.ndarray, foveation_LUT: np.ndarray,
 	for x in range(0, width):
 		for y in range(0, height):
 			sample = input_image[x][y]
-			#sample_probability = 1 - foveation_LUT[x][y]
-			#sample_probability = 1 / foveation_LUT[x][y]# - .1
-
-			# Gaussian sample probability -- this looked much worse
-			#sample_probability = np.exp(-distances[x][y] ** 2 / (2 * sigma ** 2))
-
-			# Piecewise MIXED with gaussian? Now this seems dumb
 			sample_probability = phat_current[y][x]
-
 
 			current_frame_reservoirs[x][y].update(sample, sample_weight = sample_probability, confidence = np.clip(foveation_LUT[y][x], 0.01, 1.0)) # initialize reservoir weight to .5
 			
