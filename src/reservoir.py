@@ -156,7 +156,6 @@ def reservoir_spatial_reuse(input_reservoirs, neighbour_width, width, height):
 
 
 
-# This is overwriting adaptive reservoir's confidence because it's not using input reservoir.update
 def resample(input_reservoir: Reservoir, target_sample_confidence_ci, phat_current, phat_prev) -> Reservoir:
 	'''
 	for each M
@@ -170,7 +169,8 @@ def resample(input_reservoir: Reservoir, target_sample_confidence_ci, phat_curre
 	'''
 	#r = Reservoir()
 	r = copy.deepcopy(input_reservoir)
-	wi = (target_sample_confidence_ci * phat_current) / (input_reservoir.confidence * phat_prev) * input_reservoir.sample_weight
+	m_numerator = target_sample_confidence_ci * phat_current
+	wi = m_numerator / (input_reservoir.confidence * phat_prev + m_numerator) * input_reservoir.sample_weight
 	#wi = target_sample_confidence_ci / input_reservoir.confidence * input_reservoir.sample_weight
 	r.update(input_reservoir.sample, wi, target_sample_confidence_ci)
 
