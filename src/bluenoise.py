@@ -2,6 +2,7 @@ import random
 from typing import Dict, List, Tuple
 
 import numpy as np
+from scipy.stats import qmc
 
 
 # TODO: https://onlinelibrary.wiley.com/doi/10.1111/cgf.14059 this may give the best possible blue noise sampling
@@ -73,7 +74,47 @@ def generate_blue_noise_texture(width, height, cell_size):
 	return texture
 
 
+def poisson_disc_scipy(texture_size: int, normalized_dist_between_points: float) -> np.ndarray:
+	sampler = qmc.PoissonDisk(d = 2, radius = normalized_dist_between_points)
+	samples = sampler.random()
+	pixel_coords = np.floor(samples * texture_size).astype(int)
+	pixel_coords = np.clip(pixel_coords, 0, texture_size - 1)
+	texture = np.zeros((texture_size, texture_size), dtype = np.uint8)
+	for(x, y) in pixel_coords:
+		texture[y, x] = 255
 
+	return texture
+
+def poisson_disc_scipy_pixel_dist(texture_size: int, pixel_dist_between_points: float) -> np.ndarray:
+	normalized_dist = pixel_dist_between_points / texture_size
+
+	sampler = qmc.PoissonDisk(d=2, radius=normalized_dist)
+	#samples = sampler.random(20)
+	samples = sampler.fill_space()
+
+	pixel_coords = np.floor(samples * texture_size).astype(int)
+	pixel_coords = np.clip(pixel_coords, 0, texture_size - 1)
+
+	mask = np.zeros((texture_size, texture_size), dtype = bool) # mask to mark if points are poisson samples
+	texture = np.zeros((texture_size, texture_size, 3), dtype=np.uint8)
+	for (x, y) in pixel_coords:
+		texture[y, x] = (255, 255, 255)
+		mask[y, x] = True
+
+	for y in range(0, texture_size):
+		for x in range(0, texture_size):
+			if not mask[y, x]:
+				min_dist = float('inf')
+				# slow fucking loop
+				nearest = (0, 0)
+				for (px, py) in pixel_coords:
+					dist = (px - x) ** 2 + (py - y) ** 2
+					if dist < min_dist:
+						min_dist = dist
+						nearest = (px, py)
+				texture[y, x] = (nearest[0], nearest[1], 0)
+
+	return texture
 
 def filter_void_and_cluster_blue_noise_textures(blue_noise_texture: np.ndarray, width: int, height: int, cell_size: int) -> np.ndarray:
 	output_texture = np.zeros((height, width), dtype = np.uint8)
