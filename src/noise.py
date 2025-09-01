@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import qmc
 from scipy.fftpack import fft2, ifft2, fftshift, fftfreq
 import matplotlib.pyplot as plt
+import cv2
 
 
 def generate_coloured_noise(shape, spectrum_func):
@@ -27,6 +28,74 @@ def generate_coloured_noise(shape, spectrum_func):
 	noise = np.real(ifft2(spectrum))
 
 	return noise
+
+
+
+
+# Makes white noise from a reference image, trying to match the first two image moments
+def white_noise_from_reference_moments2(reference_path, out_path, shape=(64,64), seed=None, max_iterations=10):
+    # load reference as grayscale
+    ref = cv2.imread(reference_path, cv2.IMREAD_GRAYSCALE)
+    if ref is None:
+        raise FileNotFoundError(reference_path)
+    
+    target_mean = float(ref.mean())
+    target_std = float(ref.std())
+    
+    if seed is not None:
+        np.random.seed(seed)
+    
+    # Initial estimate - start with target std as noise strength
+    noise_strength = target_std
+    
+    for iteration in range(max_iterations):
+        # Generate base image with target mean
+        base = np.full(shape, target_mean, dtype=np.float32)
+        
+        # Add gaussian noise
+        noise = np.random.randn(*shape).astype(np.float32) * noise_strength
+        
+        # Combine and clip
+        out_float = np.clip(base + noise, 0, 255)
+        
+        # Check current statistics
+        current_mean = out_float.mean()
+        current_std = out_float.std()
+        
+        # If we're close enough, stop
+        mean_error = abs(current_mean - target_mean)
+        std_error = abs(current_std - target_std)
+        
+        if mean_error < 0.5 and std_error < 0.5:
+            break
+        
+        # Adjust noise strength based on std ratio
+        if current_std > 0:
+            noise_strength *= (target_std / current_std)
+        
+        # Adjust mean by modifying the base level
+        mean_adjustment = target_mean - current_mean
+        base_adjustment = mean_adjustment * 0.5  # Conservative adjustment
+        
+        # Apply mean adjustment to next iteration
+        target_mean_adjusted = target_mean + base_adjustment
+        
+        # Reset seed for consistent noise pattern
+        if seed is not None:
+            np.random.seed(seed)
+    
+    # Final generation with best parameters
+    if seed is not None:
+        np.random.seed(seed)
+    
+    base = np.full(shape, target_mean_adjusted if 'target_mean_adjusted' in locals() else target_mean, dtype=np.float32)
+    noise = np.random.randn(*shape).astype(np.float32) * noise_strength
+    out_float = np.clip(base + noise, 0, 255)
+    
+    # Convert to uint8
+    out = out_float.astype(np.uint8)
+    
+    return out
 
 def generate_phase_only_noise(shape, spectrum_func):
 	(ny, nx) = shape
